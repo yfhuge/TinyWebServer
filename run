@@ -1,0 +1,9 @@
+#! /bin/bash
+
+
+cd `pwd`/build
+rm * -rf
+cmake ..
+make
+cd ..
+
