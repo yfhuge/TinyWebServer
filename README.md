@@ -22,9 +22,9 @@ create database yourdb;
 // 建立user表
 use yourdb; // 进入到yourdb数据库
 
-create table if not exists(
-username char(20) NULL primary key,
-password char(20) NULL
+create table if not exists user(
+username char(20) not null primary key,
+password char(20) not null
 );
 ```
 
