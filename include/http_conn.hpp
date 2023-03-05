@@ -23,8 +23,8 @@ class http_conn
 {
 public:
     static const int MAX_NAME_SIZE = 200;
-    static const int MAX_READ_SIZE = 1000;
-    static const int MAX_WRITE_SIZE = 2000;
+    static const int MAX_READ_SIZE = 2048;
+    static const int MAX_WRITE_SIZE = 1024;
     enum METHOD
     {
         GET = 0,

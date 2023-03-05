@@ -1,4 +1,5 @@
 #include "config.hpp"
+#include <stdlib.h>
 
 Conf::Conf()
 {
@@ -12,5 +13,31 @@ Conf::Conf()
 
 void Conf::parse(int argc, char** argv)
 {
-    
+    for (int i = 1; i < argc; ++ i)
+    {
+        if (i == 1)
+        {
+            port = atoi(argv[i]);
+        }
+        else if (i == 2)
+        {
+            promode = atoi(argv[i]);
+        }
+        else if (i == 3)
+        {
+            thread_num = atoi(argv[i]);
+        }
+        else if (i == 4)
+        {
+            trig_mode = atoi(argv[i]);
+        }
+        else if (i == 5)
+        {
+            sql_num = atoi(argv[i]);
+        }
+        else if (i == 6)
+        {
+            close_log = atoi(argv[i]);
+        }
+    }
 }

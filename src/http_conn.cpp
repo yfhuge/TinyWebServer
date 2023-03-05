@@ -38,6 +38,7 @@ void addfd(int epollfd, int fd, bool oneshot, int trig_mode)
         event.events |= EPOLLONESHOT;
     }
     epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
+    setnonblocking(fd);
 }
 
 void modfd(int epollfd, int fd, int ev, int trig_mode)
@@ -85,7 +86,6 @@ void http_conn::init(int fd, const sockaddr_in &addr, int trig_mode, int close_l
     _addr = addr;
     _trig_mode = trig_mode;
     _close_log = close_log;
-
     addfd(_epollfd, _sockfd, true, trig_mode);
     _user_count++;
 
@@ -153,9 +153,10 @@ bool http_conn::read()
     }
     else
     {
+        // ET读数据
         while (1)
         {
-            bytes_read = recv(_sockfd, _readBuf + _read_idx, MAX_READ_SIZE - 1 - _read_idx, 0);
+            bytes_read = recv(_sockfd, _readBuf + _read_idx, MAX_READ_SIZE - _read_idx, 0);
             if (bytes_read < 0)
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -171,8 +172,8 @@ bool http_conn::read()
             _read_idx += bytes_read;
         }
         return true;
+        
     }
-    return true;
 }
 
 bool http_conn::write()

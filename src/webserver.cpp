@@ -29,9 +29,9 @@ void WebServer::init(int promode, int port, int thread_num, int trig_mode, int s
     _close_log = close_log;
 
     log_init();
-    trig_mode_init();
     sql_pool_init();
     thread_pool_init();
+    trig_mode_init();
 }
 
 void WebServer::trig_mode_init()
@@ -202,9 +202,10 @@ void WebServer::dealread(int sockfd)
                 if (_users[sockfd]._timer_flag == 1)
                 {
                     deal_timer(sockfd);
-                    _users[sockfd]._improv = 0;
-                    break;
+                    _users[sockfd]._timer_flag = 0;
                 }
+                _users[sockfd]._improv = 0;
+                break;
             }
         }
     }
@@ -217,7 +218,6 @@ void WebServer::dealread(int sockfd)
             
             
             _pool->append(_users + sockfd);
-
             if (_util._queue.find(sockfd))
             {
                 adjust_timer(sockfd);
@@ -248,9 +248,10 @@ void WebServer::dealwrite(int sockfd)
                 if (_users[sockfd]._timer_flag == 1)
                 {
                     deal_timer(sockfd);
-                    _users[sockfd]._improv = 0;
-                    break;
+                    _users[sockfd]._timer_flag = 0;
                 }
+                _users[sockfd]._improv = 0;
+                break;
             }
         }
     }
