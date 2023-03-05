@@ -13,56 +13,51 @@
 #include <assert.h>
 #include "http_conn.hpp"
 #include <vector>
+#include <unordered_map>
+#include "log.hpp"
 
 class util_timer;
 
 struct client_data
 {
-    sockaddr_in _address;
     int _sockfd;
-    util_timer *_timer;
-};
-
-class util_timer
-{
-public:
-    bool operator<(const util_timer& W)const 
+    sockaddr_in _address;
+    time_t _expire;
+    void (*cb_func)(int);
+    bool operator<(const client_data& W)const 
     {
         return _expire < W._expire;
     }
-    bool operator==(const util_timer& W)const
-    {
-        return _expire == W._expire;
-    }
-public:
-    time_t _expire;
-    client_data *_user_data;
-    void (*cb_func)(client_data*);
 };
 
 class SmallHeap
 {
 public:
     SmallHeap();
-    ~SmallHeap() {}
+    ~SmallHeap();
     void up(int idx);
     void down(int idx);
-    int find(util_timer &str);
-    void add(util_timer &str);
-    void adjust(util_timer &str);
-    void del(util_timer &str);
+    void add(int sockfd, struct sockaddr_in& add, time_t t);
+    void adjust(int sockfd, time_t t);
+    void clear();
     void tick();
+    bool delWork(int sockfd);
+    bool find(int sockfd);
+    int _close_log;
+
 private:
-    std::vector<util_timer> _heap;
-    int _size;
+    void del(int idx);
+    void swap(int i, int j);
+    std::vector<client_data> _heap;
+    std::unordered_map<int, int> _ref;
 };
 
 class Util
 {
 public:
     Util() {}
-    ~Util();
-    void init(int timeout);
+    ~Util() {}
+    void init(int timeout, int close_log);
     void setnonblocking(int fd);
     void addfd(int epollfd, int fd, bool oneshot, int trig_mode);
     void addsig(int sig, void(handler)(int), bool restart = true);
@@ -77,6 +72,6 @@ public:
     SmallHeap _queue;
 };
 
-void cb_func(client_data *user_data);
+void cb_func(int sockfd);
 
 #endif

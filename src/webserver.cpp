@@ -4,7 +4,6 @@ WebServer::WebServer()
 {
     _users = new http_conn[MAX_FD];
 
-    _users_timer = new client_data[MAX_FD];
 }
 
 WebServer::~WebServer()
@@ -14,7 +13,6 @@ WebServer::~WebServer()
     close(_pipefd[1]);
     close(_pipefd[0]);
     delete[] _users;
-    delete[] _users_timer;
     delete _pool;
 }
 
@@ -64,7 +62,7 @@ void WebServer::log_init()
 {
     if (_close_log == 0)
     {
-        Log::getinstance()->init("../ServerLog", _close_log, 20000, 8000000);
+        Log::getinstance()->init("../logging/ServerLog", _close_log, 20000, 8000000);
     }
 }
 
@@ -76,7 +74,7 @@ void WebServer::thread_pool_init()
 void WebServer::sql_pool_init()
 {
     _sql_pool = conn_pool::getInstance();
-    _sql_pool->init(_sql_num, "localhost", _sql_user, _sql_password, _sql_dbname, _port, _close_log);
+    _sql_pool->init(_sql_num, "localhost", _sql_user, _sql_password, _sql_dbname, 3306, _close_log);
 
     _users->sql_init_result(_sql_pool);
 }
@@ -99,7 +97,7 @@ void WebServer::EpollListen()
     ret = listen(_listenfd, 5);
     assert(ret != -1);
 
-    _util.init(TIMESLOT);
+    _util.init(TIMESLOT, _close_log);
 
     _epollfd = epoll_create(5);
     assert(_epollfd != -1);
@@ -125,33 +123,20 @@ void WebServer::timer(int connfd, struct sockaddr_in client_address)
 {
     _users[connfd].init(connfd, client_address, _conn_trig_mode, _close_log);
 
-    _users_timer[connfd]._address = client_address;
-    _users_timer[connfd]._sockfd = connfd;
-    util_timer timer;
-    timer._user_data = &_users_timer[connfd];
-    timer.cb_func = cb_func;
     time_t cur = time(NULL);
-    timer._expire = cur + 3 * TIMESLOT;
-    _users_timer[connfd]._timer = &timer;
-    _util._queue.add(timer);
+    _util._queue.add(connfd, client_address, cur + 3 * TIMESLOT);
 }
 
-void WebServer::adjust_timer(util_timer timer)
+void WebServer::adjust_timer(int connfd)
 {
     time_t cur = time(NULL);
-    timer._expire = cur + 3 * TIMESLOT;
-    _util._queue.adjust(timer);
+    _util._queue.adjust(connfd, cur + 3 * TIMESLOT);
     LOG_INFO("%s", "adjust timer once");
 }
 
-void WebServer::deal_timer(util_timer timer, int sockfd)
+void WebServer::deal_timer(int sockfd)
 {
-    timer.cb_func(&_users_timer[sockfd]);
-    if (_util._queue.find(timer) != -1)
-    {
-        _util._queue.del(timer);
-    }
-    LOG_INFO("close fd: %d", _users_timer[sockfd]._sockfd);
+    _util._queue.delWork(sockfd);
 }
 
 bool WebServer::dealclientconn()
@@ -200,13 +185,12 @@ bool WebServer::dealclientconn()
 
 void WebServer::dealread(int sockfd)
 {
-    util_timer timer = *_users_timer[sockfd]._timer;
     if (_promode == 1)
     {
         // Reactor
-        if (_util._queue.find(timer) != -1)
+        if (_util._queue.find(sockfd))
         {
-            adjust_timer(timer);
+            adjust_timer(sockfd);
         }
 
         _pool->append(_users + sockfd, 0);
@@ -217,7 +201,7 @@ void WebServer::dealread(int sockfd)
             {
                 if (_users[sockfd]._timer_flag == 1)
                 {
-                    deal_timer(timer, sockfd);
+                    deal_timer(sockfd);
                     _users[sockfd]._improv = 0;
                     break;
                 }
@@ -234,27 +218,25 @@ void WebServer::dealread(int sockfd)
             
             _pool->append(_users + sockfd);
 
-            if (_util._queue.find(timer) != -1)
+            if (_util._queue.find(sockfd))
             {
-                adjust_timer(timer);
+                adjust_timer(sockfd);
             }
         }
         else
         {
-            deal_timer(timer, sockfd);
+            deal_timer(sockfd);
         }
     }
 }
 
 void WebServer::dealwrite(int sockfd)
 {
-    util_timer timer = *_users_timer[sockfd]._timer;
-
     if (_promode == 1)
     {
-        if (_util._queue.find(timer) != -1)
+        if (_util._queue.find(sockfd))
         {
-            adjust_timer(timer);
+            adjust_timer(sockfd);
         }
         // Reactor
         _pool->append(_users + sockfd, 1);
@@ -265,7 +247,7 @@ void WebServer::dealwrite(int sockfd)
             {
                 if (_users[sockfd]._timer_flag == 1)
                 {
-                    deal_timer(timer, sockfd);
+                    deal_timer(sockfd);
                     _users[sockfd]._improv = 0;
                     break;
                 }
@@ -285,14 +267,14 @@ void WebServer::dealwrite(int sockfd)
             */
             // _pool->append(_users + sockfd);
             
-            if (_util._queue.find(timer) != -1)
+            if (_util._queue.find(sockfd) != -1)
             {
-                adjust_timer(timer);
+                adjust_timer(sockfd);
             }
         }
         else
         {
-            deal_timer(timer, sockfd);
+            deal_timer(sockfd);
             // _users[sockfd].close_conn();
         }
     }
@@ -359,8 +341,7 @@ void WebServer::EventLoop()
             else if (_events[i].events & (EPOLLHUP | EPOLLERR | EPOLLRDHUP))
             {
                 // 服务器关闭连接
-                util_timer timer = *_users_timer[sockfd]._timer;
-                deal_timer(timer, sockfd);
+                deal_timer(sockfd);
             }
             else if (sockfd == _pipefd[0] && (_events[i].events & EPOLLIN))
             {

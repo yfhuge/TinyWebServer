@@ -5,15 +5,26 @@ int Util::_epollfd = -1;
 
 SmallHeap::SmallHeap()
 {
-    _size = 0;
-    _heap.push_back(util_timer());
+    _heap.push_back(client_data());
+}
+
+SmallHeap::~SmallHeap()
+{
+    clear();
+}
+
+void SmallHeap::swap(int i, int j)
+{
+    std::swap(_heap[i], _heap[j]);
+    _ref[_heap[i]._sockfd] = i;
+    _ref[_heap[j]._sockfd] = j;
 }
 
 void SmallHeap::up(int idx)
 {
     while (idx != 1)
     {
-        if (_heap[idx] < _heap[idx / 2]) std::swap(_heap[idx], _heap[idx / 2]);
+        if (_heap[idx] < _heap[idx / 2]) swap(idx, idx / 2);
         idx >>= 1;
     }
 }
@@ -21,72 +32,103 @@ void SmallHeap::up(int idx)
 void SmallHeap::down(int idx)
 {
     int tmp = idx;
-    if (idx * 2 <= _size && _heap[idx * 2] < _heap[tmp]) tmp = idx * 2;
-    if (idx * 2 + 1 <= _size && _heap[idx * 2 + 1] < _heap[tmp]) tmp = idx * 2 + 1;
+    if (idx * 2 < _heap.size() && _heap[idx * 2] < _heap[tmp]) tmp = idx * 2;
+    if (idx * 2 + 1 < _heap.size() && _heap[idx * 2 + 1] < _heap[tmp]) tmp = idx * 2 + 1;
     if (idx != tmp)
     {
-        std::swap(_heap[idx], _heap[tmp]);
+        swap(idx, tmp);
         down(tmp);
     }
 }
 
-int SmallHeap::find(util_timer &str)
+void SmallHeap::del(int idx)
 {
-    for (int i = 1; i <= _size; ++ i)
+    int n = _heap.size() - 1;
+    if (idx < n)
     {
-        if (_heap[i] == str)
-        {
-            return i;
-        }
+        swap(idx, n);
+        up(idx);
+        down(idx);
     }
-    return -1;
+    _ref.erase(_heap.back()._sockfd);
+    _heap.pop_back();
 }
 
-void SmallHeap::add(util_timer &str)
+void SmallHeap::add(int sockfd, struct sockaddr_in& addr, time_t t)
 {
-    _heap.push_back(str);
-    ++ _size;
-    up(_size);
+    if (_ref.count(sockfd))
+    {
+        // 新加的定时器在之前有，只需要调整即可
+        int idx = _ref[sockfd];
+        _heap[idx]._expire = t;
+        _heap[idx]._address = addr;
+        _heap[idx].cb_func = cb_func;
+        up(idx);
+        down(idx);
+    }
+    else 
+    {
+        // 这个在小根堆中没有，加入到堆中
+        int idx = _heap.size();
+        _ref[sockfd] = idx;
+        _heap.push_back({sockfd, addr, t, cb_func});
+        up(idx);
+    }
 }
 
-void SmallHeap::adjust(util_timer &str)
+void SmallHeap::adjust(int sockfd, time_t t)
 {
-    int idx = find(str);
+    int idx = _ref[sockfd];
+    _heap[idx]._expire = t;
     down(idx);
 }
 
-void SmallHeap::del(util_timer &str)
+void SmallHeap::clear()
 {
-    int idx = find(str);
-    std::swap(_heap[idx], _heap[_size --]);
-    down(idx);
-    _heap[_size + 1].cb_func(_heap[_size + 1]._user_data);
+    _heap.clear();
+    _ref.clear();
 }
 
 void SmallHeap::tick()
 {
-    time_t cur = time(NULL);
-    while (_size)
+    if (_heap.size() <= 1)
     {
+        return;
+    }
+
+    while (_heap.size() > 1)
+    {
+        time_t cur = time(NULL);
         if (_heap[1]._expire > cur)
         {
             break;
         }
-        std::swap(_heap[1], _heap[_size --]);
-        down(1);
-        _heap[_size + 1].cb_func(_heap[_size + 1]._user_data);
-
+        delWork(_heap[1]._sockfd);
     }
 }
 
-Util::~Util()
+bool SmallHeap::find(int sockfd)
 {
-    
+    return _ref.count(sockfd);
 }
 
-void Util::init(int timeout)
+bool SmallHeap::delWork(int sockfd)
+{
+    if (_ref.count(sockfd) == 0)
+    {
+        return false;
+    }
+    int idx = _ref[sockfd];
+    _heap[idx].cb_func(sockfd);
+    LOG_INFO("close fd:%d", sockfd);
+    del(idx);
+    return true;
+}
+
+void Util::init(int timeout, int close_log)
 {
     _TIMEOUT = timeout;
+    _queue._close_log = close_log;
 }
 
 void Util::setnonblocking(int fd)
@@ -147,10 +189,10 @@ void Util::show_error(int connfd, const char* info)
 }
 
 class util_timer;
-void cb_func(client_data *user_data)
+void cb_func(int sockfd)
 {
-    epoll_ctl(Util::_epollfd, EPOLL_CTL_DEL, user_data->_sockfd, NULL);
-    assert(user_data);
-    close(user_data->_sockfd);
+    assert(sockfd != -1);
+    epoll_ctl(Util::_epollfd, EPOLL_CTL_DEL, sockfd, NULL);
+    close(sockfd);
     http_conn::_user_count --;
 }

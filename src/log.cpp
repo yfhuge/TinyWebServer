@@ -36,7 +36,7 @@ bool Log::init(const char* file_name, int close_log, int buf_size, int lines)
     {
         strcpy(_log_name, p + 1);
         strncpy(_dir_name, file_name, p - file_name + 1);
-        snprintf(log_full_name, 255, "%s%d_%02d_%2d_%s", _dir_name, my_tm.tm_year + 1900, my_tm.tm_mon + 1, my_tm.tm_mday, _log_name);
+        snprintf(log_full_name, 255, "%s%d_%02d_%02d_%s", _dir_name, my_tm.tm_year + 1900, my_tm.tm_mon + 1, my_tm.tm_mday, _log_name);
     }
 
     _today = my_tm.tm_mday;
