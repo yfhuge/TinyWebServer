@@ -19,7 +19,7 @@
 // 建立一个数据库
 create database yourdb;
 
-//建立user表
+// 建立user表
 use yourdb; // 进入到yourdb数据库
 
 create table if not exists(
