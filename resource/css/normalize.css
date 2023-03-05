@@ -1,0 +1,24 @@
+/* 重置样式表 */
+
+/* 重置内外边距 */
+*{
+    margin: 0%;
+    padding: 0%;
+    box-sizing: border-box;
+}
+
+/* 去除图片底部4px白边 */
+img{
+    vertical-align: middle;
+}
+
+/* 去除li的点 */
+ul{
+    list-style: none;
+}
+
+/* 重置a标签的默认样式 */
+a{
+    text-decoration: none;
+    color: black;
+}

@@ -1,0 +1,90 @@
+
+body {
+    background-image: url(register.png);
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+/* ================================================================================== */
+/* 注册 */
+form {
+    width: 600px;
+    height: 500px;
+    text-align: center;
+    position: relative;
+    margin: 0 auto;
+    background-color: rgba(0, 0, 0, .5);
+    margin-top: 6%;
+    border-radius: 20px;
+    padding-top: 20px;
+}
+.register {
+    width: 200px;
+    height: 50px;
+    margin: 0% auto;
+    line-height: 50px;
+    font-size: 36px;
+    color: whitesmoke;
+}
+.yourPassWord,
+.yourUserName,
+.repeatYourPassWord,
+.button{
+    width: 450px;
+    margin: 0 auto;
+    margin-top: 30px;
+    box-sizing: border-box;
+}
+
+.yourPassWord,
+.yourUserName,
+.repeatYourPassWord {
+    color: whitesmoke;
+    font-size: 28px;
+    line-height: 50px;
+}
+
+#userName,
+#passWord,
+#rePassWord{
+    height: 50px;
+    width: 320px;
+    font-size: 24px;
+    outline: none;
+    padding-left: 20px;
+    background: none;
+    border-radius: 15px;
+    border: 2px solid gray;
+}
+
+button {
+    width: 320px;
+    height: 50px;
+    background: none;
+    outline: none;
+    border: 2px solid gray;
+    border-radius: 15px;
+    font-size: 24px;
+    transition: all 1s;
+    color: whitesmoke;
+}
+
+button:hover {
+    background: rgb(175, 170, 175);
+    color: whitesmoke;
+}
+
+.register {
+    width: 300px;
+    margin-top: 20px;
+
+}
+
+.register a {
+    color: whitesmoke;
+    font-size: 18px;
+}
+input{
+    color:whitesmoke;
+}
+
