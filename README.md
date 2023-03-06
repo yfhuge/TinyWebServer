@@ -35,15 +35,22 @@ password char(20) not null
 cmake .. && make
 
 运行项目
+
 可执行文件bin目录下，要先进入到bin目录下`cd bin`
 > ./server port promode thread_num trig_mode sql_num close_log
 
 其中
+
 port        服务器的运行的端口号。默认为10000
+
 promode     0表示Proactor模式，1表示Reactor模式。默认为Proactor
+
 thread_num  线程池的数量。默认为8
+
 trig_mode   epoll的工作模式(listenfd  和  connfd)组合 0：LT + LT   1：LT + ET   2：ET + LT   3：ET + ET。默认为LT + LT 组合
+
 sql_num     数据库连接池的数量。默认为8
+
 close_log   日志开关，0表示打开日志，1表示关闭日志。默认是打开日志
 
 
